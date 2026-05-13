@@ -1,0 +1,8 @@
+# Core dependencies
+python-telegram-bot==21.6
+anthropic>=0.40.0
+python-dotenv>=1.0.0
+
+# Optional: only needed if you want real Amazon product data (PA-API approval required)
+# Uncomment this line after you get Amazon Associates approval (3+ sales)
+# python-amazon-paapi>=5.0.1
