@@ -1,0 +1,33 @@
+# Secrets — NEVER commit these!
+.env
+*.env
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+bot_analytics.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Logs
+*.log
+logs/
