@@ -1,13 +1,12 @@
 """
 Amazon Affiliate Telegram Bot
 ==============================
-Listens on Telegram, understands what user wants using Claude AI,
+Listens on Telegram, understands what user wants using Google Gemini,
 recommends Amazon products, returns them with your affiliate links.
 
 Run with:  python bot.py
 """
 import logging
-import json
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application,
@@ -51,7 +50,6 @@ async def start(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def help_cmd(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
-    """/help command."""
     msg = (
         "*How to use this bot:*\n\n"
         "Just type what you want to buy in plain English (or Hindi).\n\n"
@@ -72,13 +70,11 @@ async def handle_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     user_id = update.effective_user.id
     log.info(f"User {user_id} asked: {user_msg}")
 
-    # Show "thinking" indicator
     thinking_msg = await update.message.reply_text(
         "🔍 Finding the best products for you..."
     )
 
     try:
-        # Step 1: Understand what the user wants using Claude
         parsed = await understand_query(user_msg)
         log.info(f"Parsed query: {parsed}")
 
@@ -89,7 +85,6 @@ async def handle_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             )
             return
 
-        # Step 2: Search Amazon for matching products
         products = search_amazon_products(
             keywords=parsed["search_keywords"],
             max_price=parsed.get("max_price"),
@@ -103,10 +98,7 @@ async def handle_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             )
             return
 
-        # Step 3: Log for analytics
         log_query(user_id, user_msg, parsed, len(products))
-
-        # Step 4: Format and send recommendations
         await thinking_msg.delete()
 
         intro = f"✨ Here are my top picks for *{parsed.get('category', 'your search')}*:\n"
@@ -125,7 +117,6 @@ async def handle_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
                 disable_web_page_preview=False,
             )
 
-        # Footer
         footer = (
             "_💡 Tip: Prices and availability change. Click links to see latest._\n"
             "_Want more options? Just ask again!_"
@@ -139,17 +130,12 @@ async def handle_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         )
 
 
-# ---------- Button Callbacks ----------
-
 async def button_callback(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle inline button clicks (like/dislike, etc)."""
     query = update.callback_query
     await query.answer()
-
     action, asin = query.data.split(":", 1)
     user_id = query.from_user.id
     log_click(user_id, asin, action)
-
     if action == "like":
         await query.answer("Thanks for the feedback! 👍", show_alert=False)
 
@@ -159,22 +145,16 @@ async def button_callback(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
 def main() -> None:
     """Start the bot."""
     if not settings.telegram_token:
-        raise RuntimeError("TELEGRAM_BOT_TOKEN not set in .env file")
-    if not settings.anthropic_api_key:
-        raise RuntimeError("ANTHROPIC_API_KEY not set in .env file")
+        raise RuntimeError("TELEGRAM_BOT_TOKEN not set in environment")
+    if not settings.google_api_key:
+        raise RuntimeError("GOOGLE_API_KEY not set in environment")
     if not settings.amazon_affiliate_tag:
-        raise RuntimeError("AMAZON_AFFILIATE_TAG not set in .env file")
+        raise RuntimeError("AMAZON_AFFILIATE_TAG not set in environment")
 
     app = Application.builder().token(settings.telegram_token).build()
-
-    # Commands
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_cmd))
-
-    # Free-text messages → product recommendations
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_query))
-
-    # Button clicks
     app.add_handler(CallbackQueryHandler(button_callback))
 
     log.info("🤖 Bot is running. Press Ctrl+C to stop.")

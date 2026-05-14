@@ -1,28 +1,30 @@
 """
-recommender.py — GEMINI VERSION (free tier, no payment needed)
-================================================================
-Uses Google Gemini to parse natural language shopping queries.
-Free tier: 1,500 requests/day, 15 per minute. Plenty for starting.
+recommender.py — uses Google Gemini (new google-genai SDK)
+============================================================
+The old google-generativeai package is deprecated. This uses the
+new google-genai SDK released in late 2024 / 2025.
 
+Free tier: 1,500 requests/day, 15 per minute.
 Get free API key: https://aistudio.google.com/apikey
 """
 import json
 import asyncio
 import logging
 import re
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from config import settings
 
 log = logging.getLogger(__name__)
 
-# Configure Gemini with your API key
-genai.configure(api_key=settings.google_api_key)
+# Configure the Gemini client (new SDK)
+client = genai.Client(api_key=settings.google_api_key)
 
 # Try multiple models — first one that works wins
 MODELS_TO_TRY = [
-    "gemini-2.5-flash",       # Best balance (recommended)
-    "gemini-2.0-flash",       # Fallback
-    "gemini-1.5-flash",       # Older fallback
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
+    "gemini-1.5-flash",
 ]
 
 SYSTEM_PROMPT = """You are a product search query parser for an Amazon shopping bot.
@@ -63,19 +65,17 @@ async def understand_query(user_message: str) -> dict:
     for model_name in MODELS_TO_TRY:
         try:
             log.info(f"Trying Gemini model: {model_name}")
-            model = genai.GenerativeModel(
-                model_name=model_name,
-                system_instruction=SYSTEM_PROMPT,
-            )
 
             def _call():
-                return model.generate_content(
-                    user_message,
-                    generation_config={
-                        "temperature": 0.1,
-                        "max_output_tokens": 400,
-                        "response_mime_type": "application/json",
-                    },
+                return client.models.generate_content(
+                    model=model_name,
+                    contents=user_message,
+                    config=types.GenerateContentConfig(
+                        system_instruction=SYSTEM_PROMPT,
+                        temperature=0.1,
+                        max_output_tokens=400,
+                        response_mime_type="application/json",
+                    ),
                 )
 
             response = await asyncio.to_thread(_call)
